@@ -6,9 +6,14 @@ from langchain.chat_models import init_chat_model
 from langgraph.graph import START, StateGraph
 from langchain_core.prompts import PromptTemplate
 from typing_extensions import List, TypedDict
+from langchain_neo4j import Neo4jGraph
 
 # Connect to Neo4j
-# graph = 
+graph = Neo4jGraph(
+    url=os.getenv("NEO4J_URI"),
+    username=os.getenv("NEO4J_USERNAME"), 
+    password=os.getenv("NEO4J_PASSWORD"),
+)
 
 # Initialize the LLM
 model = init_chat_model("gpt-4o", model_provider="openai")
@@ -35,9 +40,11 @@ class State(TypedDict):
 
 # Retrieve context 
 def retrieve(state: State):
-    context = [
-        {"data": "None"}
-    ]
+    context = graph.query("CALL db.schema.visualization()")
+    """
+    The agent will add the database schema to the context and use 
+    it to answer questions about the database.
+    """
     return {"context": context}
 
 # Generate the answer based on the question and context
@@ -52,6 +59,16 @@ workflow.add_edge(START, "retrieve")
 app = workflow.compile()
 
 # Run the application
-question = "What data is in the context?"
+question = "How is the graph structured?"
 response = app.invoke({"question": question})
 print("Answer:", response["answer"])
+
+"""
+Example questions about the database schema: 
+How is the graph structured?
+How are Movie nodes connected to Person nodes?
+What relationships are in the graph?
+What properties do Movie nodes have?
+How would I find user ratings for a movie?
+
+"""
